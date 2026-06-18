@@ -1,4 +1,5 @@
 import { useEffect } from 'react';
+import { FileDown } from 'lucide-react';
 import { SceneCanvas } from '../components/Editor/SceneCanvas';
 import { LeftToolbar } from '../components/Toolbar/LeftToolbar';
 import { BottomControlBar } from '../components/Toolbar/BottomControlBar';
@@ -6,6 +7,7 @@ import { RightPanel } from '../components/Panel/RightPanel';
 import { AcousticParamsTable } from '../components/Results/AcousticParamsTable';
 import { EnergyTimeCurve } from '../components/Results/EnergyTimeCurve';
 import { useEditorStore } from '../store/useEditorStore';
+import { exportReport } from '../utils/exportReport';
 
 export default function Home() {
   const { toolMode, isSimulating, animationTime, setAnimationTime, isPlayingAnimation } = useEditorStore();
@@ -83,12 +85,31 @@ export default function Home() {
       <AcousticParamsTable />
       <EnergyTimeCurve />
 
-      <div className="absolute top-4 left-1/2 -translate-x-1/2 z-10">
+      <div className="absolute top-4 left-1/2 -translate-x-1/2 z-10 flex items-center gap-3">
         <div className="px-6 py-2 bg-slate-900/80 backdrop-blur-sm rounded-full border border-slate-700/50">
           <h1 className="text-lg font-bold bg-gradient-to-r from-cyan-400 to-blue-400 bg-clip-text text-transparent">
             室内声学仿真辅助工具
           </h1>
         </div>
+        <button
+          onClick={() => {
+            const state = useEditorStore.getState();
+            exportReport({
+              room: state.room,
+              sources: state.sources,
+              receivers: state.receivers,
+              simulationResult: state.simulationResult,
+              heatmaps: state.soundFieldResult?.heatmaps || [],
+              walls: state.room.walls,
+            });
+          }}
+          className="px-4 py-2 bg-slate-900/80 backdrop-blur-sm rounded-full border border-slate-700/50 
+            text-cyan-400 text-sm font-medium hover:bg-slate-800 hover:border-cyan-500/50 
+            transition-all flex items-center gap-2"
+        >
+          <FileDown size={16} />
+          导出报告
+        </button>
       </div>
 
       {isSimulating && (

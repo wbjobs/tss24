@@ -119,3 +119,39 @@ export interface EnergyTimePoint {
   time: number;
   energy: number;
 }
+
+export interface SoundFieldGridPoint {
+  position: Point3D;
+  energy: number;
+  db: number;
+  wallId?: string;
+}
+
+export interface SoundFieldHeatmap {
+  wallId: string;
+  gridSize: { u: number; v: number };
+  points: SoundFieldGridPoint[];
+  minEnergy: number;
+  maxEnergy: number;
+  minDb: number;
+  maxDb: number;
+}
+
+export interface SoundFieldRequest {
+  room: Room;
+  sources: Source[];
+  params: SimulationParams;
+  gridResolution?: number;
+  targetSurfaces?: ('floor' | 'ceiling' | 'walls')[];
+}
+
+export interface SoundFieldResponse {
+  success: boolean;
+  heatmaps: SoundFieldHeatmap[];
+  stats: {
+    totalPoints: number;
+    totalRays: number;
+    computeTime: number;
+  };
+  error?: string;
+}

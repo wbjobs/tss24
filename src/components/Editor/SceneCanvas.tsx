@@ -7,6 +7,7 @@ import { RoomMesh } from './RoomMesh';
 import { SourceMarker } from './SourceMarker';
 import { ReceiverMarker } from './ReceiverMarker';
 import { RayLines } from './RayLines';
+import { HeatmapContainer } from './Heatmap';
 import { useEditorStore } from '../../store/useEditorStore';
 import { COLORS } from '../../../shared/constants';
 import type { Point3D } from '../../../shared/types';
@@ -28,6 +29,8 @@ function SceneContent() {
     updateSourcePosition,
     updateReceiverPosition,
     setWallMaterial,
+    showHeatmap,
+    soundFieldResult,
   } = useEditorStore();
 
   const { camera, raycaster, mouse } = useThree();
@@ -138,6 +141,14 @@ function SceneContent() {
           rays={allRays}
           animationTime={animationTime}
           isPlaying={isPlayingAnimation}
+        />
+      )}
+
+      {showHeatmap && soundFieldResult && soundFieldResult.heatmaps.length > 0 && (
+        <HeatmapContainer
+          heatmaps={soundFieldResult.heatmaps}
+          walls={room.walls}
+          opacity={0.6}
         />
       )}
 

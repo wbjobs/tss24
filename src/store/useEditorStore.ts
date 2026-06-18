@@ -9,6 +9,8 @@ import type {
   Point3D,
   RoomDimensions,
   Material,
+  SoundFieldResponse,
+  SoundFieldHeatmap,
 } from '../../shared/types';
 import { generateRoom, generateId } from '../../shared/geometry';
 import { DEFAULT_ROOM_DIMENSIONS, DEFAULT_SIMULATION_PARAMS } from '../../shared/constants';
@@ -28,6 +30,11 @@ interface EditorStore {
   simulationParams: SimulationParams;
   selectedWallMaterial: Material;
   showResultsPanel: boolean;
+  showHeatmap: boolean;
+  soundFieldResult: SoundFieldResponse | null;
+  isCalculatingSoundField: boolean;
+  heatmapGridResolution: number;
+  heatmapSurfaces: ('floor' | 'ceiling' | 'walls')[];
 
   setRoomType: (type: 'box' | 'l-shape') => void;
   setRoomDimensions: (dimensions: Partial<RoomDimensions>) => void;
@@ -49,8 +56,13 @@ interface EditorStore {
   setAnimationTime: (time: number) => void;
   setSimulationParams: (params: Partial<SimulationParams>) => void;
   setShowResultsPanel: (show: boolean) => void;
+  setShowHeatmap: (show: boolean) => void;
+  setHeatmapGridResolution: (resolution: number) => void;
+  setHeatmapSurfaces: (surfaces: ('floor' | 'ceiling' | 'walls')[]) => void;
+  setSoundFieldResult: (result: SoundFieldResponse | null) => void;
   resetScene: () => void;
   runSimulation: () => Promise<void>;
+  calculateSoundField: () => Promise<void>;
 }
 
 const createInitialRoom = (): Room => {
@@ -87,6 +99,11 @@ export const useEditorStore = create<EditorStore>((set, get) => ({
   simulationParams: { ...DEFAULT_SIMULATION_PARAMS },
   selectedWallMaterial: getMaterialByName('混凝土'),
   showResultsPanel: true,
+  showHeatmap: false,
+  soundFieldResult: null,
+  isCalculatingSoundField: false,
+  heatmapGridResolution: 10,
+  heatmapSurfaces: ['floor'],
 
   setRoomType: (type) => {
     const { dimensions } = get().room;
@@ -239,6 +256,22 @@ export const useEditorStore = create<EditorStore>((set, get) => ({
     set({ showResultsPanel: show });
   },
 
+  setShowHeatmap: (show) => {
+    set({ showHeatmap: show });
+  },
+
+  setHeatmapGridResolution: (resolution) => {
+    set({ heatmapGridResolution: resolution });
+  },
+
+  setHeatmapSurfaces: (surfaces) => {
+    set({ heatmapSurfaces: surfaces });
+  },
+
+  setSoundFieldResult: (result) => {
+    set({ soundFieldResult: result, isCalculatingSoundField: false });
+  },
+
   resetScene: () => {
     set({
       room: createInitialRoom(),
@@ -249,6 +282,8 @@ export const useEditorStore = create<EditorStore>((set, get) => ({
       simulationResult: null,
       isPlayingAnimation: false,
       animationTime: 0,
+      soundFieldResult: null,
+      showHeatmap: false,
     });
   },
 
@@ -292,6 +327,48 @@ export const useEditorStore = create<EditorStore>((set, get) => ({
       console.error('Simulation error:', error);
       alert(`仿真失败: ${error instanceof Error ? error.message : '未知错误'}`);
       set({ isSimulating: false });
+    }
+  },
+
+  calculateSoundField: async () => {
+    const state = get();
+    if (state.sources.length === 0) {
+      alert('请至少放置一个声源');
+      return;
+    }
+
+    set({ isCalculatingSoundField: true, soundFieldResult: null });
+
+    try {
+      const response = await fetch('/api/soundfield', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          room: state.room,
+          sources: state.sources,
+          params: state.simulationParams,
+          gridResolution: state.heatmapGridResolution,
+          targetSurfaces: state.heatmapSurfaces,
+        }),
+      });
+
+      const result = await response.json();
+
+      if (result.success) {
+        set({
+          soundFieldResult: result,
+          isCalculatingSoundField: false,
+          showHeatmap: true,
+        });
+      } else {
+        throw new Error(result.error || '声场计算失败');
+      }
+    } catch (error) {
+      console.error('Sound field error:', error);
+      alert(`声场计算失败: ${error instanceof Error ? error.message : '未知错误'}`);
+      set({ isCalculatingSoundField: false });
     }
   },
 }));

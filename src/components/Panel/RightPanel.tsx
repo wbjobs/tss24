@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ChevronDown, ChevronRight, Settings, Box, Layers, Radio } from 'lucide-react';
+import { ChevronDown, ChevronRight, Settings, Box, Layers, Radio, ThermometerSun } from 'lucide-react';
 import { useEditorStore } from '../../store/useEditorStore';
 import { MATERIALS } from '../../../shared/materials';
 
@@ -112,6 +112,14 @@ export function RightPanel() {
     updateSourcePower,
     updateReceiverRadius,
     setSimulationParams,
+    showHeatmap,
+    isCalculatingSoundField,
+    heatmapGridResolution,
+    heatmapSurfaces,
+    setShowHeatmap,
+    setHeatmapGridResolution,
+    setHeatmapSurfaces,
+    calculateSoundField,
   } = useEditorStore();
 
   const selectedSource = selectedType === 'source' ? sources.find(s => s.id === selectedId) : null;
@@ -347,6 +355,84 @@ export function RightPanel() {
               max={4000}
               unit="Hz"
             />
+          </Section>
+
+          <Section title="声场云图" icon={<ThermometerSun size={16} className="text-orange-400" />}>
+            <div className="mb-4">
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={showHeatmap}
+                  onChange={(e) => setShowHeatmap(e.target.checked)}
+                  className="w-4 h-4 rounded border-slate-600 bg-slate-800 text-cyan-500 focus:ring-cyan-500"
+                />
+                <span className="text-xs text-slate-300">显示热力图</span>
+              </label>
+            </div>
+
+            <div className="mb-3">
+              <label className="block text-xs text-slate-400 mb-1">采样分辨率</label>
+              <div className="flex gap-2">
+                {[5, 10, 15, 20].map((res) => (
+                  <button
+                    key={res}
+                    onClick={() => setHeatmapGridResolution(res)}
+                    className={`flex-1 py-1.5 px-2 text-xs rounded-lg transition-colors ${
+                      heatmapGridResolution === res
+                        ? 'bg-cyan-500/20 border border-cyan-500/50 text-cyan-400'
+                        : 'bg-slate-800 border border-slate-700 text-slate-400 hover:bg-slate-700'
+                    }`}
+                  >
+                    {res}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="mb-3">
+              <label className="block text-xs text-slate-400 mb-2">目标表面</label>
+              <div className="space-y-1.5">
+                {([
+                  { key: 'floor', label: '地面' },
+                  { key: 'ceiling', label: '天花板' },
+                  { key: 'walls', label: '墙面' },
+                ] as const).map(({ key, label }) => (
+                  <label key={key} className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={heatmapSurfaces.includes(key)}
+                      onChange={(e) => {
+                        if (e.target.checked) {
+                          setHeatmapSurfaces([...heatmapSurfaces, key]);
+                        } else {
+                          setHeatmapSurfaces(heatmapSurfaces.filter((s) => s !== key));
+                        }
+                      }}
+                      className="w-4 h-4 rounded border-slate-600 bg-slate-800 text-cyan-500 focus:ring-cyan-500"
+                    />
+                    <span className="text-xs text-slate-300">{label}</span>
+                  </label>
+                ))}
+              </div>
+            </div>
+
+            <button
+              onClick={calculateSoundField}
+              disabled={isCalculatingSoundField}
+              className="w-full py-2.5 rounded-lg text-sm font-medium transition-all
+                bg-gradient-to-r from-orange-500 to-red-500 text-white
+                hover:from-orange-400 hover:to-red-400
+                disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {isCalculatingSoundField ? (
+                <span className="flex items-center justify-center gap-2">
+                  <span className="inline-block w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                  计算中...
+                </span>
+              ) : (
+                '计算声场云图'
+              )}
+            </button>
           </Section>
         </div>
       </div>
