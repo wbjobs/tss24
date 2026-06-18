@@ -67,6 +67,7 @@ export class RayTracer {
     initialPower: number
   ): { rays: RayPath[] } | null {
     const effectiveRays: RayPath[] = [];
+    const EPSILON_ORIGIN = 1e-3;
     let currentOrigin = { ...origin };
     let currentDir = vec3.normalize({ ...direction });
     let currentEnergy = this.powerToEnergy(initialPower);
@@ -74,6 +75,7 @@ export class RayTracer {
     const pathPoints: Point3D[] = [{ ...origin }];
     const reflectionTypes: ReflectionType[] = [];
     const hitMaterials: { reflection: number }[] = [];
+    let lastHitWallId: string | null = null;
 
     for (let reflection = 0; reflection <= this.params.maxReflections; reflection++) {
       const receiverHit = this.checkReceiverIntersection(currentOrigin, currentDir, totalDistance);
@@ -112,7 +114,7 @@ export class RayTracer {
         break;
       }
 
-      const wallHit = this.findNearestWall(currentOrigin, currentDir);
+      const wallHit = this.findNearestWall(currentOrigin, currentDir, lastHitWallId);
       if (!wallHit) {
         break;
       }
@@ -120,6 +122,7 @@ export class RayTracer {
       pathPoints.push(wallHit.point);
       totalDistance += wallHit.t;
       hitMaterials.push(wallHit.wall.material);
+      lastHitWallId = wallHit.wall.id;
 
       const reflectionType: ReflectionType =
         Math.random() < wallHit.wall.material.diffusion ? 'diffuse' : 'specular';
@@ -133,7 +136,7 @@ export class RayTracer {
 
       currentOrigin = vec3.add(
         wallHit.point,
-        vec3.mul(currentDir, 1e-4)
+        vec3.mul(currentDir, EPSILON_ORIGIN)
       );
 
       currentEnergy *= wallHit.wall.material.reflection;
@@ -170,14 +173,31 @@ export class RayTracer {
 
   private findNearestWall(
     origin: Point3D,
-    dir: Point3D
+    dir: Point3D,
+    excludeWallId: string | null = null
   ): { t: number; point: Point3D; wall: Wall } | null {
     let nearest: { t: number; point: Point3D; wall: Wall } | null = null;
     let minT = Infinity;
+    const SELF_INTERSECT_EPSILON = 1e-2;
+    const MIN_HIT_DISTANCE = 1e-3;
 
     for (const wall of this.walls) {
+      if (excludeWallId && wall.id === excludeWallId) {
+        continue;
+      }
+
+      const v0 = wall.vertices[0];
+      const distToPlane = Math.abs(
+        (origin.x - v0.x) * wall.normal.x +
+        (origin.y - v0.y) * wall.normal.y +
+        (origin.z - v0.z) * wall.normal.z
+      );
+      if (distToPlane < SELF_INTERSECT_EPSILON) {
+        continue;
+      }
+
       const hit = rayWallIntersect(origin, dir, wall);
-      if (hit && hit.t > 1e-4 && hit.t < minT) {
+      if (hit && hit.t > MIN_HIT_DISTANCE && hit.t < minT) {
         minT = hit.t;
         nearest = { t: hit.t, point: hit.point, wall };
       }
